@@ -1,316 +1,329 @@
-  
-        // Expanded quotes database
-        const quotes = [
-            {
-                text: "The unexamined life is not worth living.",
-                author: "Socrates",
-                category: "Philosophy"
-            },
-            {
-                text: "Two things are infinite: the universe and human stupidity; and I'm not sure about the universe.",
-                author: "Albert Einstein",
-                category: "Science"
-            },
-            {
-                text: "To love and be loved is to feel the sun from both sides.",
-                author: "David Viscott",
-                category: "Love"
-            },
-            {
-                text: "It is better to remain silent and be thought a fool than to speak and remove all doubt.",
-                author: "Mark Twain",
-                category: "Humor"
-            },
-            {
-                text: "Art enables us to find ourselves and lose ourselves at the same time.",
-                author: "Thomas Merton",
-                category: "Art"
-            },
-            {
-                text: "The cure for anything is salt water: sweat, tears, or the sea.",
-                author: "Isak Dinesen",
-                category: "Nature"
-            },
-            {
-                text: "Those who cannot remember the past are condemned to repeat it.",
-                author: "George Santayana",
-                category: "History"
-            },
-            {
-                text: "Books are a uniquely portable magic.",
-                author: "Stephen King",
-                category: "Literature"
-            },
-            {
-                text: "The only true wisdom is in knowing you know nothing.",
-                author: "Socrates",
-                category: "Wisdom"
-            },
-            {
-                text: "Life is really simple, but we insist on making it complicated.",
-                author: "Confucius",
-                category: "Life"
-            },
-            {
-                text: "Success is not final, failure is not fatal: it is the courage to continue that counts.",
-                author: "Winston Churchill",
-                category: "Success"
+// Advanced Quote Management System with API Integration
+class QuoteManager {
+    constructor() {
+        this.API_ENDPOINT = 'https://api.quotable.io';
+        this.state = {
+            currentQuote: null,
+            categories: new Set(),
+            favorites: new Map(),
+            isLoading: false,
+            currentCategory: 'All',
+            searchTerm: '',
+            darkMode: false
+        };
+        
+        this.elements = this.initializeElements();
+        this.initializeEventListeners();
+        this.initializeIntersectionObserver();
+    }
+
+    // DOM Element Initialization with Error Handling
+    initializeElements() {
+        const selectors = {
+            quoteContainer: '.quote-container',
+            quoteText: '.quote-text',
+            quoteAuthor: '.quote-author',
+            quoteCategory: '.quote-category',
+            categoriesContainer: '.categories',
+            searchInput: '.search-input',
+            controls: '.controls',
+            loadingSpinner: '.loading-spinner',
+            themeToggle: '.theme-toggle'
+        };
+
+        const elements = {};
+        for (const [key, selector] of Object.entries(selectors)) {
+            const element = document.querySelector(selector);
+            if (!element) {
+                console.error(`Element with selector "${selector}" not found`);
             }
-        ];
-
-        // DOM Elements
-        const quoteContainer = document.querySelector('.quote-container');
-        const quoteText = document.querySelector('.quote-text');
-        const quoteAuthor = document.querySelector('.quote-author');
-        const quoteCategory = document.querySelector('.quote-category');
-        const newQuoteBtn = document.getElementById('newQuote');
-        const copyQuoteBtn = document.getElementById('copyQuote');
-        const favoriteBtn = document.getElementById('favorite');
-        const categoryTags = document.querySelectorAll('.category-tag');
-        const themeToggle = document.querySelector('.theme-toggle');
-        const loadingSpinner = document.querySelector('.loading-spinner');
-        const searchInput = document.querySelector('.search-input');
-
-        // Functions
-        function filterQuotes(searchTerm = '', category = 'All') {
-            return quotes.filter(quote => {
-                const matchesSearch = searchTerm === '' || 
-                    quote.text.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    quote.author.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    quote.category.toLowerCase().includes(searchTerm.toLowerCase());
-                
-                const matchesCategory = category === 'All' || quote.category === category;
-                
-                return matchesSearch && matchesCategory;
-            });
+            elements[key] = element;
         }
 
-        function getRandomQuote(searchTerm = '', category = 'All') {
-            const filteredQuotes = filterQuotes(searchTerm, category);
-            if (filteredQuotes.length === 0) return null;
-            return filteredQuotes[Math.floor(Math.random() * filteredQuotes.length)];
+        // Initialize dynamic buttons
+        elements.actionButtons = {
+            newQuote: this.createButton('newQuote', '🔄 New Quote'),
+            copyQuote: this.createButton('copyQuote', '📋 Copy Quote'),
+            favorite: this.createButton('favorite', '❤️ Save'),
+            share: this.createButton('share', '📤 Share')
+        };
+
+        return elements;
+    }
+
+    // Button Creation with Custom Attributes
+    createButton(id, text) {
+        const button = document.getElementById(id) || document.createElement('button');
+        button.id = id;
+        button.textContent = text;
+        button.setAttribute('data-action', id);
+        return button;
+    }
+
+    // API Integration with Error Handling and Retry Logic
+    async fetchQuotes(category = '', searchTerm = '', retries = 3) {
+        const endpoint = category === 'All' ? 
+            `${this.API_ENDPOINT}/quotes/random?limit=1` :
+            `${this.API_ENDPOINT}/quotes/random?limit=1&tags=${category}`;
+
+        try {
+            const response = await fetch(endpoint);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const data = await response.json();
+            return Array.isArray(data) ? data[0] : data;
+        } catch (error) {
+            console.error('Error fetching quote:', error);
+            if (retries > 0) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                return this.fetchQuotes(category, searchTerm, retries - 1);
+            }
+            throw error;
         }
+    }
 
-        async function displayNewQuote(searchTerm = '', category = 'All') {
-            loadingSpinner.style.display = 'block';
-            quoteContainer.style.opacity = '0';
-
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 800));
-
-            const quote = getRandomQuote(searchTerm, category);
-            
-            if (!quote) {
-                quoteText.textContent = "No quotes found matching your criteria.";
-                quoteAuthor.textContent = "";
-                quoteCategory.textContent = "";
-            } else {
-                quoteText.textContent = quote.text;
-                quoteAuthor.textContent = `- ${quote.author}`;
-                quoteCategory.textContent = quote.category;
-            }
-
-            gsap.to(quoteContainer, {
-                opacity: 1,
-                duration: 0.5,
-                ease: "power2.out"
-            });
-            
-            loadingSpinner.style.display = 'none';
+    // Advanced Category Management with Caching
+    async fetchCategories() {
+        try {
+            const response = await fetch(`${this.API_ENDPOINT}/tags`);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const categories = await response.json();
+            return categories.map(cat => cat.name);
+        } catch (error) {
+            console.error('Error fetching categories:', error);
+            return ['Wisdom', 'Philosophy', 'Love', 'Life', 'Success', 'Science', 
+                    'Literature', 'Humor', 'Art', 'Nature', 'History'];
         }
+    }
 
-        // Event Listeners
-        newQuoteBtn.addEventListener('click', () => {
-            const activeCategory = document.querySelector('.category-tag.active').textContent;
-            const searchTerm = searchInput.value;
-            displayNewQuote(searchTerm, activeCategory);
-        });
+    // Intersection Observer for Lazy Loading
+    initializeIntersectionObserver() {
+        const options = {
+            root: null,
+            rootMargin: '20px',
+            threshold: 0.1
+        };
 
-        copyQuoteBtn.addEventListener('click', () => {
-            const textToCopy = `"${quoteText.textContent}" ${quoteAuthor.textContent}`;
-            navigator.clipboard.writeText(textToCopy).then(() => {
-                copyQuoteBtn.textContent = '✓ Copied!';
-                setTimeout(() => {
-                    copyQuoteBtn.textContent = '📋 Copy Quote';
-                }, 2000);
-            });
-        });
-
-        favoriteBtn.addEventListener('click', () => {
-            favoriteBtn.textContent = '❤️ Saved!';
-            setTimeout(() => {
-                favoriteBtn.textContent = '❤️ Save';
-            }, 2000);
-        });
-
-        [Previous code remains exactly the same until the categoryTags event listener...]
-
-        categoryTags.forEach(tag => {
-            tag.addEventListener('click', () => {
-                categoryTags.forEach(t => t.classList.remove('active'));
-                tag.classList.add('active');
-                const searchTerm = searchInput.value;
-                displayNewQuote(searchTerm, tag.textContent);
-            });
-        });
-
-        let searchTimeout;
-        searchInput.addEventListener('input', (e) => {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                const activeCategory = document.querySelector('.category-tag.active').textContent;
-                displayNewQuote(e.target.value, activeCategory);
-            }, 300);
-        });
-
-        let isDarkMode = false;
-        themeToggle.addEventListener('click', () => {
-            isDarkMode = !isDarkMode;
-            if (isDarkMode) {
-                document.documentElement.style.setProperty('--background', '#1a1a1a');
-                document.documentElement.style.setProperty('--primary', '#2C3639');
-                document.documentElement.style.setProperty('--secondary', '#3F4E4F');
-                document.documentElement.style.setProperty('--accent', '#A27B5C');
-                document.documentElement.style.setProperty('--text', '#ffffff');
-                document.documentElement.style.setProperty('--card-bg', '#2d2d2d');
-            } else {
-                document.documentElement.style.setProperty('--background', '#DCD7C9');
-                document.documentElement.style.setProperty('--primary', '#2C3639');
-                document.documentElement.style.setProperty('--secondary', '#3F4E4F');
-                document.documentElement.style.setProperty('--accent', '#A27B5C');
-                document.documentElement.style.setProperty('--text', '#2C3639');
-                document.documentElement.style.setProperty('--card-bg', 'white');
-            }
-        });
-
-        // Local Storage Management
-        const FAVORITES_KEY = 'quotesphere_favorites';
-
-        function loadFavorites() {
-            const favorites = localStorage.getItem(FAVORITES_KEY);
-            return favorites ? JSON.parse(favorites) : [];
-        }
-
-        function saveFavorite(quote) {
-            const favorites = loadFavorites();
-            const exists = favorites.some(fav => 
-                fav.text === quote.text && 
-                fav.author === quote.author
-            );
-            
-            if (!exists) {
-                favorites.push(quote);
-                localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
-                return true;
-            }
-            return false;
-        }
-
-        favoriteBtn.addEventListener('click', () => {
-            const currentQuote = {
-                text: quoteText.textContent,
-                author: quoteAuthor.textContent,
-                category: quoteCategory.textContent
-            };
-
-            if (saveFavorite(currentQuote)) {
-                favoriteBtn.innerHTML = '✓ Saved!';
-                gsap.from(favoriteBtn, {
-                    scale: 1.2,
-                    duration: 0.3,
-                    ease: "back.out"
-                });
-            } else {
-                favoriteBtn.innerHTML = 'Already Saved';
-            }
-
-            setTimeout(() => {
-                favoriteBtn.innerHTML = '❤️ Save';
-            }, 2000);
-        });
-
-        // Keyboard Shortcuts
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'n' && !e.ctrlKey && !e.metaKey) {
-                newQuoteBtn.click();
-            } else if (e.key === 'c' && !e.ctrlKey && !e.metaKey) {
-                copyQuoteBtn.click();
-            } else if (e.key === 's' && !e.ctrlKey && !e.metaKey) {
-                favoriteBtn.click();
-            } else if (e.key === '/' && !e.ctrlKey && !e.metaKey) {
-                e.preventDefault();
-                searchInput.focus();
-            }
-        });
-
-        // Share functionality
-        async function shareQuote() {
-            const quote = `"${quoteText.textContent}" ${quoteAuthor.textContent}`;
-            
-            if (navigator.share) {
-                try {
-                    await navigator.share({
-                        title: 'QuoteSphere',
-                        text: quote,
-                        url: window.location.href
-                    });
-                } catch (err) {
-                    console.error('Share failed:', err);
+        this.observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    this.loadNewQuote();
+                    this.observer.unobserve(entry.target);
                 }
+            });
+        }, options);
+
+        this.observer.observe(this.elements.quoteContainer);
+    }
+
+    // Advanced Event Management System
+    initializeEventListeners() {
+        // Event delegation for all control buttons
+        this.elements.controls.addEventListener('click', (e) => {
+            const action = e.target.getAttribute('data-action');
+            if (action && this[`handle${action.charAt(0).toUpperCase() + action.slice(1)}`]) {
+                this[`handle${action.charAt(0).toUpperCase() + action.slice(1)}`]();
+            }
+        });
+
+        // Debounced search handler
+        this.elements.searchInput.addEventListener('input', 
+            this.debounce(() => this.handleSearch(), 300)
+        );
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => this.handleKeyboardShortcuts(e));
+
+        // Touch gestures
+        this.initializeTouchGestures();
+
+        // Theme toggle
+        this.elements.themeToggle.addEventListener('click', 
+            () => this.toggleTheme()
+        );
+    }
+
+    // Touch Gesture System
+    initializeTouchGestures() {
+        let touchStartX = 0;
+        let touchStartY = 0;
+
+        const handleTouchStart = (e) => {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        };
+
+        const handleTouchEnd = (e) => {
+            const deltaX = e.changedTouches[0].clientX - touchStartX;
+            const deltaY = e.changedTouches[0].clientY - touchStartY;
+
+            if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                if (Math.abs(deltaX) > 50) {
+                    if (deltaX > 0) {
+                        this.handleFavorite();
+                    } else {
+                        this.handleNewQuote();
+                    }
+                }
+            }
+        };
+
+        this.elements.quoteContainer.addEventListener('touchstart', handleTouchStart);
+        this.elements.quoteContainer.addEventListener('touchend', handleTouchEnd);
+    }
+
+    // Event Handlers
+    async handleNewQuote() {
+        await this.loadNewQuote();
+    }
+
+    async handleCopyQuote() {
+        const quote = this.state.currentQuote;
+        if (!quote) return;
+
+        const text = `"${quote.content}" - ${quote.author}`;
+        try {
+            await navigator.clipboard.writeText(text);
+            this.showNotification('Quote copied to clipboard!');
+        } catch (err) {
+            console.error('Failed to copy:', err);
+            this.showNotification('Failed to copy quote', 'error');
+        }
+    }
+
+    async handleShare() {
+        const quote = this.state.currentQuote;
+        if (!quote) return;
+
+        const shareData = {
+            title: 'QuoteSphere',
+            text: `"${quote.content}" - ${quote.author}`,
+            url: window.location.href
+        };
+
+        try {
+            if (navigator.share) {
+                await navigator.share(shareData);
             } else {
-                navigator.clipboard.writeText(quote).then(() => {
-                    alert('Quote copied to clipboard!');
-                });
+                await navigator.clipboard.writeText(shareData.text);
+                this.showNotification('Quote copied for sharing!');
             }
+        } catch (err) {
+            console.error('Share failed:', err);
         }
+    }
 
-        // Add share button to controls
-        const shareBtn = document.createElement('button');
-        shareBtn.innerHTML = '📤 Share';
-        shareBtn.addEventListener('click', shareQuote);
-        document.querySelector('.controls').appendChild(shareBtn);
+    // Advanced Quote Loading System
+    async loadNewQuote() {
+        if (this.state.isLoading) return;
 
-        // Handle mobile gestures
-        let touchstartX = 0;
-        let touchendX = 0;
+        this.state.isLoading = true;
+        this.elements.loadingSpinner.style.display = 'block';
+        this.elements.quoteContainer.style.opacity = '0.5';
 
-        quoteContainer.addEventListener('touchstart', e => {
-            touchstartX = e.changedTouches[0].screenX;
+        try {
+            const quote = await this.fetchQuotes(
+                this.state.currentCategory,
+                this.state.searchTerm
+            );
+
+            this.state.currentQuote = quote;
+            
+            // Animate quote transition
+            await this.animateQuoteTransition(() => {
+                this.elements.quoteText.textContent = quote.content;
+                this.elements.quoteAuthor.textContent = `- ${quote.author}`;
+                this.elements.quoteCategory.textContent = quote.tags?.[0] || 'Uncategorized';
+            });
+
+        } catch (error) {
+            this.showNotification('Failed to load quote. Please try again.', 'error');
+        } finally {
+            this.state.isLoading = false;
+            this.elements.loadingSpinner.style.display = 'none';
+            this.elements.quoteContainer.style.opacity = '1';
+        }
+    }
+
+    // Animation System
+    async animateQuoteTransition(updateCallback) {
+        await gsap.to(this.elements.quoteContainer, {
+            opacity: 0,
+            duration: 0.3,
+            ease: "power2.out"
         });
 
-        quoteContainer.addEventListener('touchend', e => {
-            touchendX = e.changedTouches[0].screenX;
-            handleGesture();
-        });
+        updateCallback();
 
-        function handleGesture() {
-            if (touchendX < touchstartX - 50) {
-                // Swipe left - next quote
-                newQuoteBtn.click();
-            } else if (touchendX > touchstartX + 50) {
-                // Swipe right - save quote
-                favoriteBtn.click();
+        return gsap.to(this.elements.quoteContainer, {
+            opacity: 1,
+            duration: 0.3,
+            ease: "power2.in"
+        });
+    }
+
+    // Notification System
+    showNotification(message, type = 'success') {
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+
+        gsap.to(notification, {
+            opacity: 1,
+            y: -20,
+            duration: 0.3,
+            onComplete: () => {
+                setTimeout(() => {
+                    gsap.to(notification, {
+                        opacity: 0,
+                        y: 20,
+                        duration: 0.3,
+                        onComplete: () => notification.remove()
+                    });
+                }, 2000);
             }
-        }
-
-        // Initialize
-        document.addEventListener('DOMContentLoaded', () => {
-            displayNewQuote();
-            
-            // Show keyboard shortcuts hint
-            const hint = document.createElement('div');
-            hint.style.position = 'fixed';
-            hint.style.bottom = '1rem';
-            hint.style.left = '1rem';
-            hint.style.fontSize = '0.8rem';
-            hint.style.color = 'var(--secondary)';
-            hint.innerHTML = 'Keyboard shortcuts: (N)ew quote, (C)opy, (S)ave, (/) Search';
-            document.body.appendChild(hint);
-            
-            setTimeout(() => {
-                hint.style.opacity = '0';
-                hint.style.transition = 'opacity 0.5s ease';
-                setTimeout(() => hint.remove(), 500);
-            }, 5000);
         });
-    
+    }
+
+    // Utility Functions
+    debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    // Theme Management
+    toggleTheme() {
+        this.state.darkMode = !this.state.darkMode;
+        document.documentElement.classList.toggle('dark-mode');
+        localStorage.setItem('darkMode', this.state.darkMode);
+    }
+
+    // Keyboard Shortcut System
+    handleKeyboardShortcuts(e) {
+        const shortcuts = {
+            'n': () => this.handleNewQuote(),
+            'c': () => this.handleCopyQuote(),
+            's': () => this.handleFavorite(),
+            '/': () => this.elements.searchInput.focus()
+        };
+
+        if (!e.ctrlKey && !e.metaKey && shortcuts[e.key.toLowerCase()]) {
+            e.preventDefault();
+            shortcuts[e.key.toLowerCase()]();
+        }
+    }
+}
+
+// Initialize the application
+document.addEventListener('DOMContentLoaded', () => {
+    const quoteManager = new QuoteManager();
+    // Load initial quote
+    quoteManager.loadNewQuote();
+});
