@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuoteSphere - Discover Wisdom Across Categories</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <style>
+        :root {
+            --primary: #2C3639;
+            --secondary: #3F4E4F;
+            --accent: #A27B5C;
+            --background: #DCD7C9;
+            --text: #2C3639;
+            --card-bg: white;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: var(--background);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            color: var(--text);
+        }
+
+        nav {
+            background-color: var(--primary);
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: fixed;
+            width: 100%;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .logo {
+            color: white;
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .nav-links a:hover {
+            color: var(--accent);
+        }
+
+        main {
+            margin-top: 4rem;
+            padding: 2rem;
+            flex: 1;
+        }
+
+        .category-section {
+            max-width: 1200px;
+            margin: 0 auto 2rem;
+        }
+
+        .category-title {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: var(--secondary);
+        }
+
+        .categories {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.8rem;
+            justify-content: center;
+            margin: 2rem 0;
+        }
+
+        .category-tag {
+            padding: 0.5rem 1rem;
+            background-color: var(--card-bg);
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .category-tag.active {
+            background-color: var(--accent);
+            color: white;
+        }
+
+        .category-tag:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .quote-container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: var(--card-bg);
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            transform-origin: center;
+            opacity: 0;
+            position: relative;
+        }
+
+        .quote-text {
+            font-size: 2rem;
+            color: var(--text);
+            margin-bottom: 1rem;
+            line-height: 1.4;
+            position: relative;
+        }
+
+        .quote-text::before,
+        .quote-text::after {
+            content: '"';
+            color: var(--accent);
+            font-size: 4rem;
+            position: absolute;
+            opacity: 0.2;
+        }
+
+        .quote-text::before {
+            left: -2rem;
+            top: -1rem;
+        }
+
+        .quote-text::after {
+            right: -2rem;
+            bottom: -2rem;
+        }
+
+        .quote-metadata {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 1rem;
+        }
+
+        .quote-author {
+            color: var(--accent);
+            font-size: 1.2rem;
+            font-style: italic;
+        }
+
+        .quote-category {
+            font-size: 0.9rem;
+            color: var(--secondary);
+            background: var(--background);
+            padding: 0.3rem 0.8rem;
+            border-radius: 12px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 2rem;
+        }
+
+        button {
+            padding: 0.8rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            background-color: var(--primary);
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        button:hover {
+            background-color: var(--secondary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .loading-spinner {
+            display: none;
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--accent);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 2rem auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .theme-toggle {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            padding: 1rem;
+            border-radius: 50%;
+            background-color: var(--primary);
+            color: white;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease;
+            z-index: 100;
+        }
+
+        .theme-toggle:hover {
+            transform: rotate(180deg);
+        }
+
+        .search-bar {
+            max-width: 600px;
+            margin: 0 auto 2rem;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 1rem 1.5rem;
+            border: none;
+            border-radius: 25px;
+            background: var(--card-bg);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            font-size: 1rem;
+            color: var(--text);
+        }
+
+        .search-input:focus {
+            outline: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+        }
+
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+
+            .quote-text {
+                font-size: 1.5rem;
+            }
+
+            .quote-text::before,
+            .quote-text::after {
+                font-size: 3rem;
+            }
+
+            .controls {
+                flex-direction: column;
+            }
+
+            button {
+                width: 100%;
+            }
+
+            .quote-metadata {
+                flex-direction: column;
+                gap: 1rem;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="#" class="logo">QuoteSphere 🌟</a>
+        <div class="nav-links">
+            <a href="#" class="active">Explore</a>
+            <a href="#">Collections</a>
+            <a href="#">Random</a>
+            <a href="#">About</a>
+        </div>
+    </nav>
+
+    <main>
+        <div class="search-bar">
+            <input type="text" class="search-input" placeholder="Search quotes by text, author, or category...">
+        </div>
+
+        <div class="categories">
+            <div class="category-tag active">All</div>
+            <div class="category-tag">Wisdom</div>
+            <div class="category-tag">Philosophy</div>
+            <div class="category-tag">Love</div>
+            <div class="category-tag">Life</div>
+            <div class="category-tag">Success</div>
+            <div class="category-tag">Science</div>
+            <div class="category-tag">Literature</div>
+            <div class="category-tag">Humor</div>
+            <div class="category-tag">Art</div>
+            <div class="category-tag">Nature</div>
+            <div class="category-tag">History</div>
+        </div>
+
+        <div class="quote-container">
+            <p class="quote-text"></p>
+            <div class="quote-metadata">
+                <p class="quote-author"></p>
+                <span class="quote-category"></span>
+            </div>
+        </div>
+
+        <div class="loading-spinner"></div>
+
+        <div class="controls">
+            <button id="newQuote">🔄 New Quote</button>
+            <button id="copyQuote">📋 Copy Quote</button>
+            <button id="favorite">❤️ Save</button>
+        </div>
+    </main>
+
+    <div class="theme-toggle">🌓</div>
+
+    <script>
+        // Expanded quotes database
+        const quotes = [
+            {
+                text: "The unexamined life is not worth living.",
+                author: "Socrates",
+                category: "Philosophy"
+            },
+            {
+                text: "Two things are infinite: the universe and human stupidity; and I'm not sure about the universe.",
+                author: "Albert Einstein",
+                category: "Science"
+            },
+            {
+                text: "To love and be loved is to feel the sun from both sides.",
+                author: "David Viscott",
+                category: "Love"
+            },
+            {
+                text: "It is better to remain silent and be thought a fool than to speak and remove all doubt.",
+                author: "Mark Twain",
+                category: "Humor"
+            },
+            {
+                text: "Art enables us to find ourselves and lose ourselves at the same time.",
+                author: "Thomas Merton",
+                category: "Art"
+            },
+            {
+                text: "The cure for anything is salt water: sweat, tears, or the sea.",
+                author: "Isak Dinesen",
+                category: "Nature"
+            },
+            {
+                text: "Those who cannot remember the past are condemned to repeat it.",
+                author: "George Santayana",
+                category: "History"
+            },
+            {
+                text: "Books are a uniquely portable magic.",
+                author: "Stephen King",
+                category: "Literature"
+            },
+            {
+                text: "The only true wisdom is in knowing you know nothing.",
+                author: "Socrates",
+                category: "Wisdom"
+            },
+            {
+                text: "Life is really simple, but we insist on making it complicated.",
+                author: "Confucius",
+                category: "Life"
+            },
+            {
+                text: "Success is not final, failure is not fatal: it is the courage to continue that counts.",
+                author: "Winston Churchill",
+                category: "Success"
+            }
+        ];
+
+        // DOM Elements
+        const quoteContainer = document.querySelector('.quote-container');
+        const quoteText = document.querySelector('.quote-text');
+        const quoteAuthor = document.querySelector('.quote-author');
+        const quoteCategory = document.querySelector('.quote-category');
+        const newQuoteBtn = document.getElementById('newQuote');
+        const copyQuoteBtn = document.getElementById('copyQuote');
+        const favoriteBtn = document.getElementById('favorite');
+        const categoryTags = document.querySelectorAll('.category-tag');
+        const themeToggle = document.querySelector('.theme-toggle');
+        const loadingSpinner = document.querySelector('.loading-spinner');
+        const searchInput = document.querySelector('.search-input');
+
+        // Functions
+        function filterQuotes(searchTerm = '', category = 'All') {
+            return quotes.filter(quote => {
+                const matchesSearch = searchTerm === '' || 
+                    quote.text.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    quote.author.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    quote.category.toLowerCase().includes(searchTerm.toLowerCase());
+                
+                const matchesCategory = category === 'All' || quote.category === category;
+                
+                return matchesSearch && matchesCategory;
+            });
+        }
+
+        function getRandomQuote(searchTerm = '', category = 'All') {
+            const filteredQuotes = filterQuotes(searchTerm, category);
+            if (filteredQuotes.length === 0) return null;
+            return filteredQuotes[Math.floor(Math.random() * filteredQuotes.length)];
+        }
+
+        async function displayNewQuote(searchTerm = '', category = 'All') {
+            loadingSpinner.style.display = 'block';
+            quoteContainer.style.opacity = '0';
+
+            // Simulate API call
+            await new Promise(resolve => setTimeout(resolve, 800));
+
+            const quote = getRandomQuote(searchTerm, category);
+            
+            if (!quote) {
+                quoteText.textContent = "No quotes found matching your criteria.";
+                quoteAuthor.textContent = "";
+                quoteCategory.textContent = "";
+            } else {
+                quoteText.textContent = quote.text;
+                quoteAuthor.textContent = `- ${quote.author}`;
+                quoteCategory.textContent = quote.category;
+            }
+
+            gsap.to(quoteContainer, {
+                opacity: 1,
+                duration: 0.5,
+                ease: "power2.out"
+            });
+            
+            loadingSpinner.style.display = 'none';
+        }
+
+        // Event Listeners
+        newQuoteBtn.addEventListener('click', () => {
+            const activeCategory = document.querySelector('.category-tag.active').textContent;
+            const searchTerm = searchInput.value;
+            displayNewQuote(searchTerm, activeCategory);
+        });
+
+        copyQuoteBtn.addEventListener('click', () => {
+            const textToCopy = `"${quoteText.textContent}" ${quoteAuthor.textContent}`;
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                copyQuoteBtn.textContent = '✓ Copied!';
+                setTimeout(() => {
+                    copyQuoteBtn.textContent = '📋 Copy Quote';
+                }, 2000);
+            });
+        });
+
+        favoriteBtn.addEventListener('click', () => {
+            favoriteBtn.textContent = '❤️ Saved!';
+            setTimeout(() => {
+                favoriteBtn.textContent = '❤️ Save';
+            }, 2000);
+        });
+
+        categoryTags.forEach(tag => {
+            tag.addEventListener('click',
