@@ -1,106 +1,111 @@
 // DOM Elements
-const quoteText = document.querySelector('.quote-text');
-const quoteAuthor = document.querySelector('.quote-author');
-const quoteCategory = document.querySelector('.quote-category');
-const newQuoteButton = document.getElementById('newQuote');
-const copyQuoteButton = document.getElementById('copyQuote');
+const jokeText = document.querySelector('.joke-text');
+const jokeCategory = document.querySelector('.joke-category');
+const jokeType = document.querySelector('.joke-type');
+const newJokeButton = document.getElementById('newJoke');
+const copyJokeButton = document.getElementById('copyJoke');
 const favoriteButton = document.getElementById('favorite');
 const searchInput = document.querySelector('.search-input');
 const categoryTags = document.querySelectorAll('.category-tag');
 const loadingSpinner = document.querySelector('.loading-spinner');
 
 // API Endpoint
-const API_URL = 'https://api.quotable.io';
+const JOKE_API_URL = 'https://v2.jokeapi.dev/joke';
 
-// Fetch a random quote
-async function fetchRandomQuote(tag = '') {
+// Fetch a random joke
+async function fetchRandomJoke(category = 'Any') {
     try {
         // Show loading spinner
         loadingSpinner.style.display = 'block';
 
-        // Fetch quote from API
-        const response = await fetch(`${API_URL}/random${tag ? `?tags=${tag}` : ''}`);
-        if (!response.ok) throw new Error('Failed to fetch quote');
+        // Fetch joke from API
+        const response = await fetch(`${JOKE_API_URL}/${category}`);
+        if (!response.ok) throw new Error('Failed to fetch joke');
 
         const data = await response.json();
-        displayQuote(data);
+        displayJoke(data);
     } catch (error) {
-        console.error('Error fetching quote:', error);
-        quoteText.textContent = 'Failed to load quote. Please try again.';
+        console.error('Error fetching joke:', error);
+        jokeText.textContent = 'Failed to load joke. Please try again.';
     } finally {
         // Hide loading spinner
         loadingSpinner.style.display = 'none';
     }
 }
 
-// Display the quote
-function displayQuote(quote) {
-    quoteText.textContent = `"${quote.content}"`;
-    quoteAuthor.textContent = `— ${quote.author}`;
-    quoteCategory.textContent = `#${quote.tags.join(', #')}`;
+// Display the joke
+function displayJoke(joke) {
+    if (joke.type === 'single') {
+        jokeText.textContent = joke.joke;
+        jokeType.textContent = '';
+    } else if (joke.type === 'twopart') {
+        jokeText.textContent = `${joke.setup} ... ${joke.delivery}`;
+        jokeType.textContent = '(Two-Part Joke)';
+    }
+    jokeCategory.textContent = `Category: ${joke.category}`;
 }
 
-// Copy quote to clipboard
-function copyQuote() {
-    const textToCopy = `${quoteText.textContent} ${quoteAuthor.textContent}`;
+// Copy joke to clipboard
+function copyJoke() {
+    const textToCopy = jokeText.textContent;
     navigator.clipboard.writeText(textToCopy)
-        .then(() => alert('Quote copied to clipboard!'))
-        .catch(() => alert('Failed to copy quote.'));
+        .then(() => alert('Joke copied to clipboard!'))
+        .catch(() => alert('Failed to copy joke.'));
 }
 
-// Save quote to favorites (local storage)
+// Save joke to favorites (local storage)
 function saveFavorite() {
-    const favoriteQuotes = JSON.parse(localStorage.getItem('favoriteQuotes')) || [];
-    const currentQuote = {
-        text: quoteText.textContent,
-        author: quoteAuthor.textContent,
-        category: quoteCategory.textContent,
+    const favoriteJokes = JSON.parse(localStorage.getItem('favoriteJokes')) || [];
+    const currentJoke = {
+        text: jokeText.textContent,
+        category: jokeCategory.textContent,
+        type: jokeType.textContent,
     };
 
-    // Check if quote is already saved
-    if (!favoriteQuotes.some(quote => quote.text === currentQuote.text)) {
-        favoriteQuotes.push(currentQuote);
-        localStorage.setItem('favoriteQuotes', JSON.stringify(favoriteQuotes));
-        alert('Quote saved to favorites!');
+    // Check if joke is already saved
+    if (!favoriteJokes.some(joke => joke.text === currentJoke.text)) {
+        favoriteJokes.push(currentJoke);
+        localStorage.setItem('favoriteJokes', JSON.stringify(favoriteJokes));
+        alert('Joke saved to favorites!');
     } else {
-        alert('Quote already saved!');
+        alert('Joke already saved!');
     }
 }
 
-// Search quotes by keyword
-async function searchQuotes(query) {
+// Search jokes by keyword
+async function searchJokes(query) {
     try {
         loadingSpinner.style.display = 'block';
-        const response = await fetch(`${API_URL}/search/quotes?query=${query}`);
-        if (!response.ok) throw new Error('Failed to search quotes');
+        const response = await fetch(`${JOKE_API_URL}/Any?contains=${query}`);
+        if (!response.ok) throw new Error('Failed to search jokes');
 
         const data = await response.json();
-        if (data.results.length > 0) {
-            displayQuote(data.results[0]);
+        if (data.error) {
+            jokeText.textContent = 'No jokes found. Try another search!';
+            jokeCategory.textContent = '';
+            jokeType.textContent = '';
         } else {
-            quoteText.textContent = 'No quotes found. Try another search!';
-            quoteAuthor.textContent = '';
-            quoteCategory.textContent = '';
+            displayJoke(data);
         }
     } catch (error) {
-        console.error('Error searching quotes:', error);
-        quoteText.textContent = 'Failed to search quotes. Please try again.';
+        console.error('Error searching jokes:', error);
+        jokeText.textContent = 'Failed to search jokes. Please try again.';
     } finally {
         loadingSpinner.style.display = 'none';
     }
 }
 
 // Event Listeners
-newQuoteButton.addEventListener('click', () => fetchRandomQuote());
-copyQuoteButton.addEventListener('click', copyQuote);
+newJokeButton.addEventListener('click', () => fetchRandomJoke());
+copyJokeButton.addEventListener('click', copyJoke);
 favoriteButton.addEventListener('click', saveFavorite);
 
 searchInput.addEventListener('input', (e) => {
     const query = e.target.value.trim();
     if (query) {
-        searchQuotes(query);
+        searchJokes(query);
     } else {
-        fetchRandomQuote();
+        fetchRandomJoke();
     }
 });
 
@@ -110,11 +115,11 @@ categoryTags.forEach(tag => {
         categoryTags.forEach(t => t.classList.remove('active'));
         // Add active class to clicked tag
         tag.classList.add('active');
-        // Fetch quotes by category
-        const category = tag.textContent.toLowerCase();
-        fetchRandomQuote(category === 'all' ? '' : category);
+        // Fetch jokes by category
+        const category = tag.textContent;
+        fetchRandomJoke(category);
     });
 });
 
-// Initial Load: Fetch a random quote
-fetchRandomQuote();
+// Initial Load: Fetch a random joke
+fetchRandomJoke();
